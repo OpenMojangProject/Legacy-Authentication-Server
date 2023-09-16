@@ -1,0 +1,10 @@
+{
+  "Status": "OK",
+  "Runtime-Mode": "productionMode",
+  "Application-Author": "Mojang Web Force",
+  "Application-Description": "Mojang Authentication Server.",
+  "Specification-Version": "6.0.0",
+  "Application-Name": "yggdrasil.auth.restlet.server",
+  "Implementation-Version": "6.0.0",
+  "Application-Owner": "Mojang"
+}
