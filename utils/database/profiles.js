@@ -1,84 +1,112 @@
-// Import required libraries
-const jwt = require('jsonwebtoken'); // Library for JSON Web Tokens
-const { generateUUIDWithoutHyphens } = require('../common'); // Custom function to generate UUID without hyphens
-
-// Import the SQLite3 library
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database(process.env.DB_FILE); // Create a database connection
+const { prisma } = require('../client');
 
 // Function to add a profile to the database
-function addProfile(username, owner, callback) {
-    const insertQuery = 'INSERT INTO profiles (username, uuid, owner) VALUES (?, ?, ?)';
-    const uuid = generateUUIDWithoutHyphens(); // Generate a UUID for the profile
+async function addProfile(username, owner) {
+    const profileExist = await checkProfile(username);
 
-    // Check if a profile with the same username exists
-    checkProfile(username, (err, profile) => {
-        if (err || !profile) {
-            // If no profile with the same username exists, insert the new profile
-            db.run(insertQuery, [username, uuid, owner], (err) => {
-                if (err) {
-                    console.error('Error adding profile:', err.message);
-                    callback(err, null);
-                } else {
-                    callback(false, uuid); // Callback with the generated UUID
+    if (!profileExist) {
+        try {
+            const query = await prisma.profile.create({
+                data: {
+                    username,
+                    ownerId: owner
                 }
             });
-        } else {
-            callback("Already exists", null); // Callback with an error message
+
+            return query;
         }
-    });
+        catch (err) {
+            console.error('Error adding profile:', err.message);
+            return err;
+        }
+    }
+    else {
+        return { code: "Already exists" }
+    }
 }
 
 // Function to check if a profile with a specific UUID exists
-function checkProfile(uuid, callback) {
-    const query = 'SELECT * FROM profiles WHERE uuid = ?';
+async function checkProfile(uuid, selected) {
+    try {
+        const query = await prisma.profile.findFirst({
+            where: {
+                id: uuid,
+                selected
+            }
+        });
 
-    db.get(query, [uuid], (err, row) => {
-        if (err) {
-            callback(err, null);
-        } else {
-            callback(null, row);
-        }
-    });
+        return query;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to get a profile by its username
-async function getProfileByName(username, callback) {
-    const query = 'SELECT * FROM profiles WHERE username = ?';
+async function getProfileByName(username) {
+    try {
+        const query = await prisma.profile.findFirst({
+            where: {
+                username: username
+            }
+        });
 
-    db.get(query, [username], (err, row) => {
-        if (err) {
-            callback(err, null);
-        } else {
-            callback(null, row);
+        if (query.id) {
+            return query;
         }
-    });
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to check all profiles belonging to a specific owner
-function checkProfiles(owner, callback) {
-    const query = 'SELECT * FROM profiles WHERE owner = ?';
+async function checkProfiles(owner) {
+    try {
+        const query = await prisma.user.findFirst({
+            where: {
+                username: owner
+            },
+            select: {
+                profiles: true
+            }
+        });
 
-    db.all(query, [owner], (err, rows) => {
-        if (err) {
-            callback(err, null);
-        } else {
-            callback(null, rows);
-        }
-    });
+        return query.profiles;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to select a profile for a user
-function selectProfile(uuid, owner, callback) {
-    const query = 'UPDATE users SET selectedProfile = ? WHERE username = ?';
+async function selectProfile(uuid, owner) {
+    try {
+        await prisma.profile.updateMany({
+            where: {
+                ownerId: owner,
+                selected: true
+            },
+            data: {
+                selected: false
+            }
+        });
 
-    db.run(query, [uuid, owner], err => {
-        if (err) {
-            callback(err);
-        } else {
-            callback(true);
-        }
-    });
+        const query = await prisma.profile.update({
+            where: {
+                id: uuid,
+                ownerId: owner
+            },
+            data: {
+                selected: true
+            }
+        });
+
+        return query;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Export the functions for use in other parts of the application

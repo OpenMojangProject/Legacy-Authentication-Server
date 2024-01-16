@@ -1,81 +1,99 @@
 // Import required libraries
-const sqlite3 = require('sqlite3').verbose(); // SQLite3 for database operations
 const bcrypt = require('bcrypt'); // Library for password hashing
-const common = require('../common'); // Custom functions (e.g., UUID generation)
-const db = new sqlite3.Database(process.env.DB_FILE); // Create a database connection
+const { prisma } = require('../client');
 
 // Function to get a user by their username
-function getUserByUsername(value, callback) {
-    const query = `SELECT * FROM users WHERE username = ?`;
+async function getUserByUsername(value, special) {
+    try {
+        var isEmail = false;
 
-    db.get(query, [value], (err, row) => {
-        if (err) {
-            console.error('Error:', err.message);
-            return callback(err);
+        if (process.env.FEATURE_NON_EMAIL_LOGIN === 'true') {
+            if (value.includes('@')) {
+                isEmail = true;     
+            }
         }
 
-        callback(null, row); // Pass the user data back through the callback
-    });
+        const query = await prisma.user.findFirst({
+            where: isEmail ? { email: value.toLowerCase() } : { username: value },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                password: special,
+                preferredLanguage: true,
+                registrationCountry: true
+            }
+        });
+
+        return query;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to get a user by their selected profile
-function getUserByProfile(value, callback) {
-    const query = `SELECT * FROM users WHERE selectedProfile = ?`;
+async function getUserByProfile(value) {
+    try {
+        const query = await prisma.user.findFirst({
+            where: {
+                selectedProfile: value
+            }
+        });
 
-    db.get(query, [value], (err, row) => {
-        if (err) {
-            console.error('Error:', err.message);
-            return callback(err);
-        }
-
-        callback(null, row); // Pass the user data back through the callback
-    });
+        return query;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to create a new user
-function createUser(username, password, preferredLanguage, registrationCountry, callback) {
-    const insertQuery = `
-      INSERT INTO users (email, username, password, userId, preferredLanguage, registrationCountry)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-
-    // Hash the password before inserting it into the database
-    db.run(
-        insertQuery,
-        [
-            username,
-            username,
-            bcrypt.hashSync(password, process.env.PASSWORD_SALT), // Hash the password
-            common.generateUUIDWithoutHyphens(), // Generate a UUID for the user
-            preferredLanguage,
-            registrationCountry,
-        ],
-        (err, row) => {
-            if (err) {
-                return callback(err);
+async function createUser(email, username, password, preferredLanguage, registrationCountry) {
+    try {
+        const query = await prisma.user.create({
+            data: {
+                email: email,
+                username: username,
+                password: bcrypt.hashSync(password, process.env.PASSWORD_SALT),
+                preferredLanguage: preferredLanguage,
+                registrationCountry: registrationCountry,
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                preferredLanguage: true,
+                registrationCountry: true
             }
+        });
 
-            callback(null, row);
-        }
-    );
+        return query;
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Function to update a user's password
-function updatePassword(username, password, callback) {
-    const query = `
-    UPDATE users
-    SET password = ?
-    WHERE username = ?
-    `;
+async function updatePassword(username, password) {
+    try {
+        const query = await prisma.user.update({
+            where: {
+                username: username
+            },
+            data: {
+                password: bcrypt.hashSync(password, process.env.PASSWORD_SALT)
+            }
+        });
 
-    // Hash the new password before updating it in the database
-    db.run(query, [bcrypt.hashSync(password, process.env.PASSWORD_SALT), username], err => {
-        if (err) {
-            callback(err);
-        } else {
-            callback(null);
+        if (query.id) {
+            return query;
         }
-    });
+    }
+    catch (err) {
+        return err;
+    }
 }
 
 // Export the functions for use in other parts of the application

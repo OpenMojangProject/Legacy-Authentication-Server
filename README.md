@@ -15,7 +15,7 @@ Our primary goal with this project is to preserve and recreate the legacy Mojang
 - [x] **Invalidate:** /invalidate
 
 ## Installation
-This installation is assuming that you are running some form of Linux distrubution.
+This installation is assuming that you are running some form of Linux distribution.
 
 ### Prerequisites
 - Node.js 16 or higher
@@ -25,20 +25,34 @@ This installation is assuming that you are running some form of Linux distrubuti
 git clone https://github.com/OpenMojangProject/AuthServer.git
 ```
 
-2. Duplicate the `.env.example` file and rename it to `.env`:
+2. Install Node dependencies:
+```bash
+npm i
+```
+
+3. Duplicate the `.env.example` file and rename it to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-3. Open the newly created .env file and customize the values to align with your requirements:
+4. Open the newly created .env file and customize the values to align with your requirements:
 ```bash
 nano .env
 ```
 
-4. Initiate the legacy Mojang authentication server by executing 
+5. Create the database using the Prisma schema command:
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
+
+6. Initiate the legacy Mojang authentication server by executing:
 ```bash
 node index.js
 ```
+
+## Try it out
+I have created and exported an Insomnia environment with every request in it (excluding skins and web routes). Download Insomnia [here](https://insomnia.rest/download) and import it by downloading the JSON file [here](https://raw.githubusercontent.com/OpenMojangProject/Legacy-Authentication-Server/main/insomnia.json) (CTRL+S to save the file).
 
 ## Inject Authlib
 *this works with servers too*
@@ -48,8 +62,8 @@ Setting up authlib-injector will force Minecraft to use a custom server.
 1. Download [authlib-injector](https://github.com/yushijinhun/authlib-injector/releases/latest).
 2. Place the .jar file in your `.minecraft` directory.
 3. Edit your java arguments and add:
-    - `-javaagent:authlib-injector.jar=SRV`
-        - Replace SRV with the location of your auth server.
+ - `-javaagent:authlib-injector.jar=SRV`
+     - Replace SRV with the location of your auth server.
 
 ## Joining Servers
-Joining servers is currently not implemented in this project. This requires an implemention of the [Protocol Implemention](https://wiki.vg/Protocol_Encryption) introduced in 12w17a. I am unsure on how to implement this into the project, if you know, feel free to contribute using a pull request.
+Joining servers is currently not implemented in this project. This requires an implementation of the [Protocol Implementation](https://wiki.vg/Protocol_Encryption) introduced in 12w17a. I am unsure of how to implement this into the project; if you know, feel free to contribute using a pull request.

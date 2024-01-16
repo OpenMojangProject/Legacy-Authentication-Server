@@ -131,7 +131,5 @@ dist
 
 # Project specific
 data.db
+data.db-journal
 keys/
-
-# Exclude the experimental panel
-web/

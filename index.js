@@ -7,19 +7,10 @@ const app = express();
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const database = require('./utils/database'); // Custom database module
 const genRoutes = require('./routes/general'); // General routes
 const authRoutes = require('./routes/authentication'); // Authentication routes
 const admRoutes = require('./routes/omp/admin'); // OpenMojangProject admin routes
 const fileUpload = require('express-fileupload');
-
-// Create database tables during startup
-try {
-  database.createTables();
-} catch (error) {
-  console.error('Error creating tables:', error);
-  process.exit(1); // Exit the application if there's an error creating tables
-}
 
 // Automatic generation of password salt if not provided in environment variables
 if (!process.env.PASSWORD_SALT) {
@@ -51,8 +42,14 @@ app.use(bodyParser.json());
 // Use morgan for logging HTTP requests
 app.use(morgan(process.env.MORGAN));
 
+if (process.env.WEB_ROUTES === 'true') {
+  app.use('/web', express.static(__dirname + "/web"));
+}
+
 // Serve static files from /skins directory
-app.use('/skins', express.static(__dirname + "/skins"));
+if (process.env.SKIN_ROUTES === 'true') {
+  app.use('/skins', express.static(__dirname + "/skins"));
+}
 
 // Configure trust proxy settings based on environment variable
 if (process.env.TRUST_PROXY !== '0') {

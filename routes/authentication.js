@@ -2,32 +2,23 @@
 const bcrypt = require('bcrypt'); // Library for password hashing
 const express = require('express');
 const router = express.Router();
-const database = require('../utils/database'); // Module for database operations
-const util = require('util'); // Utility module for promisifying functions
-
-// Promisify database functions for better code readability
-const createNewSessionAsync = util.promisify(database.sessions.createNewSession);
-const checkProfilesAsync = util.promisify(database.profiles.checkProfiles);
-const checkProfileAsync = util.promisify(database.profiles.checkProfile);
-const getUserByUsernameAsync = util.promisify(database.users.getUserByUsername);
-const checkSessionAsync = util.promisify(database.sessions.checkSession);
-const invalidateTokenAsync = util.promisify(database.sessions.invalidateToken);
-const getProfileByNameAsync = util.promisify(database.profiles.getProfileByName);
-const updatePasswordAsync = util.promisify(database.users.updatePassword);
+const { checkProfile, checkProfiles } = require('../utils/database/profiles');
+const { createNewSession, checkSession, invalidateToken } = require('../utils/database/sessions');
+const { getUserByUsername, updatePassword } = require('../utils/database/users');
 
 // Helper function to authorize a user and create a session
 async function authorize(user) {
   try {
     // Create a new session token
-    const token = await createNewSessionAsync(user.username);
+    const token = await createNewSession(user.username);
     
     // Fetch user profiles and the selected profile
-    const profiles = await checkProfilesAsync(user.username);
-    const profileList = profiles.map(profile => ({ name: profile.username, id: profile.uuid }));
-    const profile = await checkProfileAsync(user.selectedProfile);
+    const profiles = await checkProfiles(user.username);
+    const profileList = profiles.map(profile => ({ name: profile.username, id: profile.id }));
+    var selectedProfile = profiles.find(profile => profile.selected === true);
 
-    const selectedProfile = profile
-      ? { name: profile.username, id: profile.uuid }
+    selectedProfile = selectedProfile
+      ? { name: selectedProfile.username, id: selectedProfile.id }
       : {};
 
     return {
@@ -37,13 +28,15 @@ async function authorize(user) {
           { name: 'preferredLanguage', value: user.preferredLanguage },
           { name: 'registrationCountry', value: user.registrationCountry }
         ],
-        id: user.userId
+        id: user.id
       },
       accessToken: token,
       availableProfiles: profileList,
       selectedProfile
     };
   } catch (err) {
+    console.error(err);
+
     throw {
       error: 'ForbiddenOperationException',
       errorMessage: 'Invalid credentials. Invalid username or password.'
@@ -54,7 +47,7 @@ async function authorize(user) {
 // Helper function for final user authentication
 async function finalAuth(req, res, username) {
   try {
-    const user = await getUserByUsernameAsync(username);
+    const user = await getUserByUsername(username, true);
 
     // Check if the user exists and the password is valid
     if (!user || !bcrypt.compareSync(req.body.password, user.password)) {
@@ -68,7 +61,10 @@ async function finalAuth(req, res, username) {
     const authorizedUser = await authorize(user);
     return res.status(200).json(authorizedUser);
   } catch (err) {
-    return res.status(403).json(err);
+    return res.status(403).json({
+      error: 'ForbiddenOperationException',
+      errorMessage: 'Invalid credentials. Invalid username or password.'
+    });
   }
 }
 
@@ -76,21 +72,6 @@ async function finalAuth(req, res, username) {
 router.post('/authenticate', async (req, res) => {
   if (req.body.username && req.body.password) {
     let username = req.body.username;
-    
-    // Handle non-email login if enabled
-    if (process.env.FEATURE_NON_EMAIL_LOGIN === 'true') {
-      if (!username.includes('@')) {
-        try {
-          const user = await getProfileByNameAsync(username);
-          username = user?.owner;
-        } catch (err) {
-          return res.status(403).json({
-            error: 'ForbiddenOperationException',
-            errorMessage: 'Invalid credentials. Invalid username or password.'
-          });
-        }
-      }
-    }
 
     // Perform final user authentication
     finalAuth(req, res, username);
@@ -101,7 +82,7 @@ router.post('/authenticate', async (req, res) => {
 router.post('/changePassword', async (req, res) => {
   try {
     // Check the validity of the provided access token
-    const row = await checkSessionAsync(req.body.accessToken);
+    const row = await checkSession(req.body.accessToken);
 
     if (!row || row.valid === 0) {
       return res.status(403).json({
@@ -119,7 +100,7 @@ router.post('/changePassword', async (req, res) => {
     }
 
     // Update the user's password with the new one
-    await updatePasswordAsync(row.username, req.body.newPassword);
+    await updatePassword(row.username, req.body.newPassword);
 
     return res.status(200).json({
       "message": "Password updated"
@@ -133,7 +114,7 @@ router.post('/changePassword', async (req, res) => {
 router.post('/refresh', async (req, res) => {
   try {
     // Check the validity of the provided access token
-    const row = await checkSessionAsync(req.body.accessToken);
+    const row = await checkSession(req.body.accessToken);
 
     if (!row || row.valid === 0) {
       return res.status(403).json({
@@ -143,7 +124,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     // Get the user by username and authorize them with a new session
-    const user = await getUserByUsernameAsync(row.username);
+    const user = await getUserByUsername(row.username);
     const authorizedUser = await authorize(user);
 
     return res.status(200).json(authorizedUser);
@@ -156,7 +137,7 @@ router.post('/refresh', async (req, res) => {
 router.post('/validate', async (req, res) => {
   try {
     // Check the validity of the provided access token
-    const row = await checkSessionAsync(req.body.accessToken);
+    const row = await checkSession(req.body.accessToken);
 
     if (!row || row.valid === 0) {
       return res.status(403).json({
@@ -173,23 +154,10 @@ router.post('/validate', async (req, res) => {
 });
 
 // Route to invalidate (sign out) an access token
-router.post('/invalidate', async (req, res) => {
+router.post(['/invalidate', '/signout'], async (req, res) => {
   try {
     // Invalidate (delete) the provided access token
-    await invalidateTokenAsync(req.body.accessToken);
-
-    // Send a 204 (No Content) response indicating success
-    return res.status(204).send();
-  } catch (err) {
-    return res.status(403).json(err);
-  }
-});
-
-// Route to sign out (invalidate) an access token (same as /invalidate)
-router.post('/signout', async (req, res) => {
-  try {
-    // Invalidate (delete) the provided access token
-    await invalidateTokenAsync(req.body.accessToken);
+    await invalidateToken(req.body.accessToken);
 
     // Send a 204 (No Content) response indicating success
     return res.status(204).send();
