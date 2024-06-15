@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     .values({
       email,
       username,
-      password,
+      password: await Bun.password.hash(password),
       preferredLanguage,
       registrationCountry,
     })
