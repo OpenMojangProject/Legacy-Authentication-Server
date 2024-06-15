@@ -1,0 +1,8 @@
+{
+  "skinDomains": ["openmojangproject.com"],
+  "meta": {
+    "implementationName": "openmojangproject-authserver",
+    "implementationVersion": "6.0.0",
+    "serverName": "OpenMojangProject"
+  }
+}
