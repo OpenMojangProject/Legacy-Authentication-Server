@@ -2,6 +2,7 @@
   "name": "omp-legacy-authentication-server",
   "description": "A recreation of the legacy authentication server used for Minecraft (pre-Microsoft).",
   "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
