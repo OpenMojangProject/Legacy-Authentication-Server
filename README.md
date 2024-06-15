@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Legacy Authentication Server
 
-## Getting Started
+Welcome to the OpenMojangProject Legacy Authentication Server, a recreation of the [legacy Mojang authentication server](https://wiki.vg/Legacy_Mojang_Authentication). Please note that we are an independent entity and not affiliated with Mojang, Microsoft, or Minecraft in any way.
 
-First, run the development server:
+##### The original server is here: https://authserver.mojang.com (now dead)
+
+## Purpose
+
+Our primary goal with this project is to preserve and recreate the legacy Mojang authentication server for archival purposes. Additionally, we aim to ensure its functionality to the best of our abilities. You can utilize this server with a genuine Minecraft client by integrating it with the authlib-injector project. To enhance security and support the authlib-injector project's archival efforts, we have forked it and maintain our own repository, which you can access [here](https://github.com/OpenMojangProject/authlib-injector).
+
+## Implementation
+
+**_note:_** _joining online mode servers will not work, [learn more](#joining-servers)._
+
+_all routes are prefixed with /api, e.g: /api/authenticate_
+
+- [x] **Authenticate:** /authenticate
+- [x] **Refresh:** /refresh
+- [x] **Validate:** /validate
+- [x] **Signout:** /signout
+- [x] **Invalidate:** /invalidate
+
+## Installation
+
+This installation is assuming that you are running some form of Linux distribution.
+
+### Prerequisites
+
+- Bun
+- PostgreSQL
+
+### Setup Instructions
+
+1. Clone this project by running this command:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/OpenMojangProject/Legacy-Authentication-Server.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install Bun dependencies:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun i
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+3. Duplicate the `.env.example` file and rename it to `.env`:
 
-## Learn More
+```bash
+cp .env.example .env
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open the newly created .env file and customize the values to align with your requirements:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+nano .env
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+5. Create the database using the Drizzle commands:
 
-## Deploy on Vercel
+```bash
+bun run db:migrate
+bun run db:generate
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+6. Initiate the legacy Mojang authentication server by executing:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```bash
+bun --bun run start
+```
+
+_NOTE: The --bun flag is required for password hashing to work._
+
+## Try it out
+
+I have created and exported an Insomnia environment with every request in it (excluding skins and web routes). Download Insomnia [here](https://insomnia.rest/download) and import it by downloading the JSON file [here](https://raw.githubusercontent.com/OpenMojangProject/Legacy-Authentication-Server/main/insomnia.json) (CTRL+S to save the file).
+
+## Inject Authlib
+
+_this works with servers too_
+
+Setting up authlib-injector will force Minecraft to use a custom server.
+
+1. Download [authlib-injector](https://github.com/yushijinhun/authlib-injector/releases/latest).
+2. Place the .jar file in your `.minecraft` directory.
+3. Edit your java arguments and add:
+
+- `-javaagent:authlib-injector.jar=SRV`
+  - Replace SRV with the location of your auth server.
+
+## Joining Servers
+
+Joining servers is currently not implemented in this project. This requires an implementation of the [Protocol Implementation](https://wiki.vg/Protocol_Encryption) introduced in 12w17a. I am unsure of how to implement this into the project; if you know, feel free to contribute using a pull request.
