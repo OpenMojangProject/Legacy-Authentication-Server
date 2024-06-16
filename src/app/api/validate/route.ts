@@ -6,13 +6,9 @@ export async function POST(request: Request) {
   const foundSession = await db.query.session.findFirst({
     where: (session, { eq }) => eq(session.jwt, accessToken),
     with: {
-      profile: {
+      owner: {
         with: {
-          user: {
-            with: {
-              profiles: true,
-            },
-          },
+          profiles: true,
         },
       },
     },

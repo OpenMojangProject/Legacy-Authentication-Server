@@ -42,13 +42,13 @@ export const session = pgTable("session", {
   id: uuid("id").defaultRandom().primaryKey(),
   jwt: text("jwt").notNull().unique(),
   valid: boolean("valid").notNull().default(true),
-  profileId: uuid("profile_id").notNull(),
+  ownerId: uuid("owner_id").notNull(),
   createdAt: timestamp("created_at"),
 });
 
 export const sessionRelations = relations(session, ({ one }) => ({
-  profile: one(profile, {
-    fields: [session.profileId],
-    references: [profile.id],
+  owner: one(user, {
+    fields: [session.ownerId],
+    references: [user.id],
   }),
 }));

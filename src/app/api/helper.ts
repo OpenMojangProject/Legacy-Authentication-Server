@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { session } from "@/schema";
+import { eq } from "drizzle-orm";
 import * as jwt from "jsonwebtoken";
 
 export function invalidCredentials() {
@@ -19,6 +20,11 @@ export async function generateUserResponse(user: {
   registrationCountry: string | null;
   profiles: any[];
 }) {
+  await db
+    .update(session)
+    .set({ valid: false })
+    .where(eq(session.ownerId, user.id));
+
   const token = jwt.sign(
     {
       agg: "Adult",
@@ -31,7 +37,7 @@ export async function generateUserResponse(user: {
 
   await db.insert(session).values({
     jwt: token!,
-    profileId: user?.id!,
+    ownerId: user?.id!,
   });
 
   const selectedProfile = user.profiles.find((profile) => profile.selected!)!;
