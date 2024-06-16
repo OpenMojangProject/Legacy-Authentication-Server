@@ -32,7 +32,7 @@ export async function generateUserResponse(user: {
       yggt: crypto.randomUUID().replaceAll("-", ""),
       iss: "Yggdrasil-Auth",
     },
-    "secret"
+    process.env.JWT_SECRET!
   );
 
   await db.insert(session).values({
